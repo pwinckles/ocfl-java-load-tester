@@ -46,8 +46,7 @@ public class NewObjectLoadTestCmd implements Runnable {
     @CommandLine.Option(
             names = "--files",
             description = "A list of file size and file count pairs that describe the test object composition."
-                    + " For example, '10MB:2,1MB:5,100KB:10' would produce a test object with 17 total files,"
-                    + " 2 10MB files, 5 1MB files, and 10 100KB files.",
+                    + " For example, '10MB=2' means 2 10MB files. Valid units are B, KB, MB, and GB.",
             required = true)
     private Map<String, Integer> files;
 
