@@ -44,6 +44,12 @@ public class NewObjectLoadTestCmd implements Runnable {
     private int threadCount;
 
     @CommandLine.Option(
+            names = "--processing-threads",
+            description = "The number of threads to use to add files within a test thread.",
+            required = true)
+    private int processingThreadCount;
+
+    @CommandLine.Option(
             names = "--files",
             description = "A list of file size and file count pairs that describe the test object composition."
                     + " For example, '10MB=2' means 2 10MB files. Valid units are B, KB, MB, and GB.",
@@ -138,7 +144,8 @@ public class NewObjectLoadTestCmd implements Runnable {
 
         var fileSpec = FileSpec.convert(files);
 
-        var loadTest = new NewObjectLoadTest(repo, tempDir, iterations, warmupIterations, threadCount, fileSpec);
+        var loadTest = new NewObjectLoadTest(
+                repo, tempDir, iterations, warmupIterations, threadCount, processingThreadCount, fileSpec);
 
         try {
             var histogram = loadTest.run();
@@ -167,7 +174,8 @@ public class NewObjectLoadTestCmd implements Runnable {
         return "NewObjectLoadTestCmd{" + "iterations="
                 + iterations + ", warmupIterations="
                 + warmupIterations + ", threadCount="
-                + threadCount + ", files="
+                + threadCount + ", processingThreadCount="
+                + processingThreadCount + ", files="
                 + files + ", tempDir="
                 + tempDir + ", storageOptions="
                 + storageOptions + '}';

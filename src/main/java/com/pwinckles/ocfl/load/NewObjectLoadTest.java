@@ -4,6 +4,9 @@ import edu.wisc.library.ocfl.api.OcflRepository;
 import edu.wisc.library.ocfl.api.model.ObjectVersionId;
 import edu.wisc.library.ocfl.api.model.VersionInfo;
 import edu.wisc.library.ocfl.core.util.FileUtil;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -12,6 +15,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
 import org.HdrHistogram.Histogram;
 import org.slf4j.Logger;
@@ -25,6 +31,7 @@ public class NewObjectLoadTest {
     private final long iterations;
     private final long warmupIterations;
     private final int threadCount;
+    private final int processingThreadCount;
     private final Map<Long, Integer> fileSpec;
 
     private final ObjectGenerator objectGenerator;
@@ -35,6 +42,7 @@ public class NewObjectLoadTest {
             long iterations,
             long warmupIterations,
             int threadCount,
+            int processingThreadCount,
             Map<Long, Integer> fileSpec) {
         if (iterations < 1) {
             throw new IllegalArgumentException("Iterations must be 1 or more.");
@@ -45,6 +53,9 @@ public class NewObjectLoadTest {
         if (threadCount < 1) {
             throw new IllegalArgumentException("Thread count must be 1 or more.");
         }
+        if (processingThreadCount < 1) {
+            throw new IllegalArgumentException("Processing thread count must be 1 or more.");
+        }
         if (fileSpec == null || fileSpec.isEmpty()) {
             throw new IllegalArgumentException("File spec must contain 1 or more files.");
         }
@@ -53,6 +64,7 @@ public class NewObjectLoadTest {
         this.iterations = iterations;
         this.warmupIterations = warmupIterations;
         this.threadCount = threadCount;
+        this.processingThreadCount = processingThreadCount;
         this.fileSpec = fileSpec;
 
         this.objectGenerator = new ObjectGenerator(tempDir);
@@ -125,6 +137,12 @@ public class NewObjectLoadTest {
 
             private void runInner(Path objectPath, VersionInfo versionInfo, long iterations)
                     throws InterruptedException {
+                ExecutorService executor;
+                if (processingThreadCount > 1) {
+                    executor = Executors.newWorkStealingPool(processingThreadCount);
+                } else {
+                    executor = null;
+                }
                 var runStart = Instant.now();
                 var lastLog = runStart;
 
@@ -145,7 +163,32 @@ public class NewObjectLoadTest {
                     try {
                         var opStart = System.nanoTime();
                         try {
-                            repo.putObject(ObjectVersionId.head(objectId), objectPath, versionInfo);
+                            if (executor != null) {
+                                repo.updateObject(ObjectVersionId.head(objectId), versionInfo, updater -> {
+                                    List<? extends Future<?>> futures;
+                                    try (var files = Files.find(
+                                            objectPath, Integer.MAX_VALUE, (file, attrs) -> attrs.isRegularFile())) {
+                                        futures = files.map(file -> executor.submit(() -> {
+                                                    var logical = objectPath
+                                                            .relativize(file)
+                                                            .toString();
+                                                    updater.addPath(file, logical);
+                                                }))
+                                                .toList();
+                                    } catch (IOException e) {
+                                        throw new UncheckedIOException(e);
+                                    }
+                                    futures.forEach(future -> {
+                                        try {
+                                            future.get();
+                                        } catch (Exception e) {
+                                            throw new RuntimeException("Error adding file to object " + objectId, e);
+                                        }
+                                    });
+                                });
+                            } else {
+                                repo.putObject(ObjectVersionId.head(objectId), objectPath, versionInfo);
+                            }
                         } finally {
                             var end = System.nanoTime();
                             histogram.recordValue(end - opStart);
@@ -157,6 +200,9 @@ public class NewObjectLoadTest {
                 }
 
                 log.info("Run completed in {}", Duration.between(runStart, Instant.now()));
+                if (executor != null) {
+                    executor.shutdownNow();
+                }
             }
         };
     }
