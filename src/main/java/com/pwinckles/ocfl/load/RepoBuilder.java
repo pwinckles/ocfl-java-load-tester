@@ -1,10 +1,10 @@
 package com.pwinckles.ocfl.load;
 
-import edu.wisc.library.ocfl.api.OcflRepository;
-import edu.wisc.library.ocfl.aws.OcflS3Client;
-import edu.wisc.library.ocfl.core.OcflRepositoryBuilder;
-import edu.wisc.library.ocfl.core.cache.NoOpCache;
-import edu.wisc.library.ocfl.core.extension.storage.layout.config.HashedNTupleLayoutConfig;
+import io.ocfl.api.OcflRepository;
+import io.ocfl.aws.OcflS3Client;
+import io.ocfl.core.OcflRepositoryBuilder;
+import io.ocfl.core.cache.NoOpCache;
+import io.ocfl.core.extension.storage.layout.config.HashedNTupleLayoutConfig;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -12,7 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.S3Client;
 
 public final class RepoBuilder {
 
@@ -38,11 +38,16 @@ public final class RepoBuilder {
 
     public static OcflRepository buildS3Repo(
             String profile, String region, String endpoint, String bucket, String prefix, Path tempDir) {
-        var clientBuilder = S3AsyncClient.crtBuilder()
-                .credentialsProvider(ProfileCredentialsProvider.builder()
-                        .profileName(profile)
-                        .build())
+        var clientBuilder = S3Client.builder()
+//                .credentialsProvider(ProfileCredentialsProvider.builder()
+//                        .profileName(profile)
+//                        .build())
                 .region(Region.of(region));
+        //        var clientBuilder = S3AsyncClient.crtBuilder()
+        //                .credentialsProvider(ProfileCredentialsProvider.builder()
+        //                        .profileName(profile)
+        //                        .build())
+        //                .region(Region.of(region));
 
         if (endpoint != null) {
             clientBuilder.endpointOverride(URI.create(endpoint));

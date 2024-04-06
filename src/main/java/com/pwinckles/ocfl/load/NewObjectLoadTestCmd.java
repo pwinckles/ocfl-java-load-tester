@@ -1,7 +1,7 @@
 package com.pwinckles.ocfl.load;
 
-import edu.wisc.library.ocfl.api.OcflRepository;
-import edu.wisc.library.ocfl.core.util.FileUtil;
+import io.ocfl.api.OcflRepository;
+import io.ocfl.core.util.FileUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
