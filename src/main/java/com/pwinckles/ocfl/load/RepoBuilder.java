@@ -10,9 +10,11 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 public final class RepoBuilder {
 
@@ -38,16 +40,17 @@ public final class RepoBuilder {
 
     public static OcflRepository buildS3Repo(
             String profile, String region, String endpoint, String bucket, String prefix, Path tempDir) {
-        var clientBuilder = S3Client.builder()
-//                .credentialsProvider(ProfileCredentialsProvider.builder()
-//                        .profileName(profile)
-//                        .build())
+        AwsCredentialsProvider credentialsProvider;
+        if (profile == null || profile.isBlank()) {
+            credentialsProvider = DefaultCredentialsProvider.create();
+        } else {
+            credentialsProvider =
+                    ProfileCredentialsProvider.builder().profileName(profile).build();
+        }
+
+        var clientBuilder = S3AsyncClient.crtBuilder()
+                .credentialsProvider(credentialsProvider)
                 .region(Region.of(region));
-        //        var clientBuilder = S3AsyncClient.crtBuilder()
-        //                .credentialsProvider(ProfileCredentialsProvider.builder()
-        //                        .profileName(profile)
-        //                        .build())
-        //                .region(Region.of(region));
 
         if (endpoint != null) {
             clientBuilder.endpointOverride(URI.create(endpoint));

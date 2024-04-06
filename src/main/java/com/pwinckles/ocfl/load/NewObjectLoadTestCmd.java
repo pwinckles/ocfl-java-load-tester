@@ -98,7 +98,6 @@ public class NewObjectLoadTestCmd implements Runnable {
         @CommandLine.Option(
                 names = "--s3-profile",
                 description = "The name of the profile to load the credentials from.",
-                defaultValue = "default",
                 showDefaultValue = CommandLine.Help.Visibility.ALWAYS)
         private String s3Profile;
 
@@ -157,6 +156,8 @@ public class NewObjectLoadTestCmd implements Runnable {
             log.info("Output in milliseconds:\n{}", out.toString(StandardCharsets.UTF_8));
         } catch (InterruptedException e) {
             throw new RuntimeException("Load test was interrupted.", e);
+        } finally {
+            repo.close();
         }
     }
 
